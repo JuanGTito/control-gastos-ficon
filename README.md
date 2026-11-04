@@ -166,7 +166,7 @@ Capturas, reportes y exportaciones de verificación se guardan en `test-results/
 
 ## Alcance y alojamiento
 
-- Implementación y datos exclusivamente locales; sin despliegue ni publicación.
+- Código listo para preparar un despliegue manual. Los datos y credenciales actuales permanecen exclusivamente locales. Seguir [la guía de Hostinger](docs/DESPLIEGUE_HOSTINGER.md) para configurar una base nueva, publicar solo `public/` y crear el superadministrador con `php artisan app:create-super-admin`.
 - Hostinger ofrece bases MySQL en sus planes y usa MariaDB en Web/Cloud según su [documentación](https://www.hostinger.com/support/1583226-which-database-management-system-is-used-at-hostinger/). Al publicar, configurar la conexión `mariadb` con los datos de hPanel, HTTPS, `APP_DEBUG=false`, secretos propios, copias de base/adjuntos y raíz web en `public/`. No trasladar `.runtime/` al servidor. La validación local actual se hizo con MySQL 8; queda pendiente una prueba en el MariaDB del alojamiento.
 - Exportaciones acotadas a 5.000 gastos en XLSX y 500 en PDF por descarga; reducir el rango de fechas si se supera el límite.
 - Auditoría sin contraseñas ni tokens y protegida contra edición desde los modelos de la aplicación. No sustituye un registro externo resistente a modificaciones de un administrador de la base de datos.

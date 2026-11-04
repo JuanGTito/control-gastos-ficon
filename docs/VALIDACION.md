@@ -22,6 +22,12 @@ Fecha: 4 de noviembre de 2026. Proyecto: Gastos Ficon / control-gastos.
 | Sintaxis JavaScript de la aplicación y la prueba de navegador | Aprobada |
 | Composer audit | Sin avisos de vulnerabilidades conocidos |
 
+## Preparación de Git y Hostinger
+
+La rama local `preparacion-produccion-hostinger` añade una plantilla de entorno sin secretos, un adaptador para `public_html` y la guía de despliegue. El repositorio excluye `.env`, `.runtime`, comprobantes, plantilla Excel, cachés y resultados de prueba. El seeder ya no crea el usuario de demostración.
+
+En esta preparación se repitieron las 54 pruebas y 366 aserciones en MySQL, `composer check-platform-reqs --no-dev`, Laravel Pint y la validación de sintaxis PHP. Se montó una estructura local equivalente a `gastos-ficon/` junto a `public_html/`: el adaptador respondió HTTP 200 en `/login`, `/up`, CSS y logo. El servidor local habitual se restauró en `localhost:8000`.
+
 ## Migración de PostgreSQL a MySQL
 
 Se respaldó la base original en `.runtime/backups/antes-mysql-20261104-170608.dump` y su configuración en el mismo directorio privado. Se creó una instancia MySQL propia en el puerto de base 3307, sin modificar el servicio MySQL preexistente del equipo. El migrador de una sola ejecución, archivado en `.runtime/backups/migrate-postgres-to-mysql.php`, transfirió usuarios, sesiones, caché, catálogos, gastos, caja, entregas y auditoría, preservando identificadores y relaciones. Comparó cada campo de los registros de origen y destino antes de confirmar la transacción: 3 usuarios, 2 gastos, 27 catálogos, 1 caja, 1 entrega y 7 entradas de auditoría, entre otras tablas. Se guardó además `.runtime/backups/gastos-ficon-mysql-20261104-171905.sql`. La instancia PostgreSQL anterior está detenida; sus archivos y respaldo permanecen disponibles como recuperación. La aplicación usa MySQL.
