@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'required' => 'El campo :attribute es obligatorio.',
+    'string' => 'El campo :attribute debe ser texto.',
+    'email' => 'El correo electrónico no es válido.',
+    'unique' => 'El valor de :attribute ya está registrado.',
+    'confirmed' => 'La confirmación de :attribute no coincide.',
+    'numeric' => 'El campo :attribute debe ser un número.',
+    'integer' => 'El campo :attribute debe ser un número entero.',
+    'decimal' => 'El campo :attribute admite como máximo dos decimales.',
+    'date_format' => 'El campo :attribute debe tener el formato :format.',
+    'after_or_equal' => 'La fecha :attribute debe ser igual o posterior a :date.',
+    'before_or_equal' => 'La fecha :attribute debe ser igual o anterior a :date.',
+    'in' => 'El valor seleccionado para :attribute no es válido.',
+    'regex' => 'El formato de :attribute no es válido.',
+    'boolean' => 'El valor de :attribute no es válido.',
+    'file' => 'El campo :attribute debe ser un archivo.',
+    'uploaded' => 'No se pudo subir :attribute. Comprueba el tamaño del archivo.',
+    'mimes' => 'El archivo :attribute debe ser de tipo: :values.',
+    'min' => ['numeric' => 'El campo :attribute debe ser al menos :min.', 'string' => 'El campo :attribute debe tener al menos :min caracteres.'],
+    'max' => ['numeric' => 'El campo :attribute no debe superar :max.', 'string' => 'El campo :attribute no debe superar :max caracteres.', 'file' => 'El archivo :attribute no debe superar :max KB.'],
+    'password' => ['letters' => 'La contraseña debe incluir letras.', 'numbers' => 'La contraseña debe incluir números.'],
+    'attributes' => ['login' => 'usuario', 'name' => 'nombre', 'name_key' => 'nombre', 'username' => 'usuario', 'password' => 'contraseña', 'email' => 'correo', 'description' => 'descripción', 'amount' => 'importe', 'spent_on' => 'fecha del gasto', 'receipt' => 'comprobante', 'category' => 'categoría', 'from' => 'desde', 'to' => 'hasta', 'version' => 'versión', 'role' => 'rol', 'active' => 'estado', 'kind' => 'catálogo', 'sort_order' => 'orden', 'user_id' => 'responsable', 'petty_cash_account_id' => 'caja chica', 'provider' => 'proveedor', 'tax_id' => 'RUC / DNI', 'receipt_type_id' => 'tipo de comprobante', 'series' => 'serie', 'document_number' => 'número de comprobante', 'observation' => 'observación', 'received_on' => 'fecha de entrega', 'received_amount' => 'monto recibido', 'returned_on' => 'fecha de devolución', 'purpose' => 'motivo', 'dni' => 'DNI', 'area' => 'cargo / área', 'branch_id' => 'sucursal', 'review_note' => 'comentario de revisión', 'note' => 'observación', 'status' => 'estado'],
+];

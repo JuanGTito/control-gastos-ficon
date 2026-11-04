@@ -1,0 +1,1 @@
+<button type="button" class="theme-toggle" data-theme-toggle aria-label="Activar modo oscuro" aria-pressed="false"><span data-theme-icon aria-hidden="true">☾</span><span data-theme-label>Modo oscuro</span></button>

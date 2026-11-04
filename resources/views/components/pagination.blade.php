@@ -1,0 +1,3 @@
+@if($paginator->hasPages())
+<nav class="pagination" aria-label="Paginación"><span>{{ $paginator->firstItem() }}–{{ $paginator->lastItem() }} de {{ $paginator->total() }}</span><div>@if($paginator->onFirstPage())<span class="btn secondary small disabled">← Anterior</span>@else<a class="btn secondary small" href="{{ $paginator->previousPageUrl() }}" rel="prev">← Anterior</a>@endif<span class="page-number">{{ $paginator->currentPage() }} / {{ $paginator->lastPage() }}</span>@if($paginator->hasMorePages())<a class="btn secondary small" href="{{ $paginator->nextPageUrl() }}" rel="next">Siguiente →</a>@else<span class="btn secondary small disabled">Siguiente →</span>@endif</div></nav>
+@endif
