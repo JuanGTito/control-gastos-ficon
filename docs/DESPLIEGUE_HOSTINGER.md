@@ -84,7 +84,7 @@ Transferir por SFTP la plantilla Excel original a:
 /home/u571915572/domains/ficon.pe/gastos-ficon/storage/app/templates/caja-chica.xlsx
 ```
 
-La plantilla no forma parte de Git; el exportador XLSX la necesita. Los comprobantes se guardan en `storage/app/private/receipts` y tampoco se copian a `public_html`.
+La plantilla no forma parte de Git; el exportador XLSX la necesita incluso cuando no hay caja chica. En el Administrador de archivos de Hostinger, cargar el Excel original proporcionado y renombrarlo `caja-chica.xlsx` en esa ruta exacta. Confirmar desde SSH con `ls -lh storage/app/templates/caja-chica.xlsx` y `test -r storage/app/templates/caja-chica.xlsx` dentro de `gastos-ficon`. Si aparece un error 500 de Excel con el mensaje «Falta la plantilla de rendición», este archivo es el paso pendiente. Los comprobantes se guardan en `storage/app/private/receipts` y tampoco se copian a `public_html`.
 
 Respaldar primero el contenido actual de la carpeta del subdominio. Luego copiar solo `public/` y reemplazar su `index.php` con el adaptador específico. No usar `../public_html/` como destino porque eso afectaría al sitio principal:
 

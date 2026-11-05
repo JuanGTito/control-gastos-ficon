@@ -7,6 +7,7 @@ use App\Modules\Audit\Actions\RecordAudit;
 use App\Modules\Audit\Models\AuditEntry;
 use App\Modules\Expenses\Actions\SaveExpense;
 use App\Modules\Expenses\Models\Expense;
+use App\Modules\Reports\Services\RenditionWorkbook;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -238,6 +239,40 @@ class ExpenseSystemTest extends TestCase
         $this->assertStringStartsWith('%PDF-', $response->getContent());
         $this->expense($user, ['description' => '<script>alert(1)</script>']);
         $this->get('/reportes/pdf')->assertOk();
+    }
+
+    public function test_missing_excel_template_shows_an_actionable_error_instead_of_server_error(): void
+    {
+        config(['expenses.template_path' => storage_path('app/templates/__plantilla_faltante_de_prueba__.xlsx')]);
+        $user = $this->person();
+
+        $this->actingAs($user)->from('/gastos')->get('/reportes/xlsx')->assertRedirect('/gastos')->assertSessionHasErrors('export');
+        $this->assertStringContainsString('La exportación Excel no está disponible porque falta la plantilla de rendición o no se puede leer.', session('errors')->first('export'));
+    }
+
+    public function test_personal_expenses_export_without_a_cash_account(): void
+    {
+        $user = $this->person();
+        $this->expense($user);
+        $this->assertDatabaseCount('petty_cash_accounts', 0);
+
+        $book = app(RenditionWorkbook::class)->build(Expense::with(['user', 'categoryItem', 'receiptType', 'cash'])->get(), [], $user);
+        try {
+            $sheet = $book->getSheet(0);
+            $this->assertSame($user->name, $sheet->getCell('C7')->getValue());
+            $this->assertStringContainsString('GASTOS SIN CAJA CHICA', $sheet->getCell('C10')->getValue());
+            $this->assertSame('GASTOS SIN CAJA', $sheet->getCell('G15')->getValue());
+            $this->assertStringContainsString('No hubo entrega de caja chica', $sheet->getCell('A56')->getValue());
+            $this->assertEquals(24.90, $sheet->getCell('J21')->getValue());
+        } finally {
+            $book->disconnectWorksheets();
+        }
+        unset($book, $sheet);
+        gc_collect_cycles();
+
+        $pdf = $this->actingAs($user)->get('/reportes/pdf');
+        $pdf->assertOk()->assertHeader('content-type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF-', $pdf->getContent());
     }
 
     public function test_export_limit_is_enforced(): void

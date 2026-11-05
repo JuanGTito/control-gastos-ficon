@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Modules\Catalogs\Models\CatalogItem;
 use App\Modules\PettyCash\Models\PettyCashAccount;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -14,15 +15,14 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Table;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use RuntimeException;
 
 class RenditionWorkbook
 {
     public function build(Collection $expenses, array $filters, User $exporter, ?PettyCashAccount $fullCash = null): Spreadsheet
     {
         $path = config('expenses.template_path');
-        if (! is_file($path)) {
-            throw new RuntimeException('Falta la plantilla de rendición en storage/app/templates/caja-chica.xlsx.');
+        if (! is_file($path) || ! is_readable($path)) {
+            throw ValidationException::withMessages(['export' => 'La exportación Excel no está disponible porque falta la plantilla de rendición o no se puede leer. Contacta a un administrador.']);
         }
         $book = IOFactory::load($path);
         $prototype = clone $book->getSheet(0);
@@ -116,7 +116,7 @@ class RenditionWorkbook
         $this->date($sheet, 'H6', $cash?->received_on);
         $renderDate = $full ? ($cash->submitted_at ?? now()) : now();
         $this->date($sheet, 'H7', $renderDate->copy()->timezone(config('expenses.timezone')));
-        $this->text($sheet, 'C10', $full ? $cash->purpose : 'CONSULTA FILTRADA. '.($cash?->purpose ? $cash->purpose.'. ' : '').$this->filterLabel($filters));
+        $this->text($sheet, 'C10', $full ? $cash->purpose : ($cash ? 'CONSULTA FILTRADA. '.$cash->purpose.'. ' : 'GASTOS SIN CAJA CHICA. ').$this->filterLabel($filters));
         $sheet->getRowDimension(10)->setRowHeight($full ? 30 : 42);
         $sheet->getStyle('C10:L10')->getAlignment()->setWrapText(true);
         if ($full) {
@@ -164,7 +164,7 @@ class RenditionWorkbook
         } elseif ($full) {
             $sheet->setCellValue('G15', '=IF(E13="","COMPLETE EL MONTO RECIBIDO",IF(ROUND(E17,2)=0,"CONFORME","REVISAR DIFERENCIA"))');
         } else {
-            $this->text($sheet, 'G15', 'CONSULTA FILTRADA');
+            $this->text($sheet, 'G15', $cash ? 'CONSULTA FILTRADA' : 'GASTOS SIN CAJA');
         }
         $sheet->setCellValue('E'.(44 + $extra), '=COUNTIF(J21:J'.$last.',">0")');
         $sheet->setCellValue('E'.(45 + $extra), '=J'.(41 + $extra));
@@ -183,8 +183,10 @@ class RenditionWorkbook
             $this->text($sheet, 'A'.(56 + $extra), 'Caja permanente de '.$owner->name.'. El saldo se conserva entre entregas. Un saldo negativo representa dinero adelantado por el responsable. Cada nueva entrega del administrador cubre primero ese adelanto y el resto se agrega al fondo. El detalle de entregas y reembolsos está en la hoja ENTREGAS. Este documento no implica devolución del saldo ni firma automática.');
         } elseif ($full) {
             $this->text($sheet, 'A'.(56 + $extra), 'Declaro que los gastos registrados en esta rendición corresponden a actividades relacionadas con '.config('expenses.company').' y que los importes consignados son correctos. Asimismo, entrego los documentos sustentatorios disponibles y me comprometo a devolver el saldo no utilizado. Estado de revisión: '.PettyCashAccount::STATUSES[$cash->status].'.');
-        } else {
+        } elseif ($cash) {
             $this->text($sheet, 'A'.(56 + $extra), 'Esta consulta incluye únicamente los gastos del responsable que coinciden con los filtros indicados. No constituye el cierre ni la conciliación completa de una caja chica. Los importes recibidos y devueltos se muestran únicamente en la exportación de rendición completa.');
+        } else {
+            $this->text($sheet, 'A'.(56 + $extra), 'Esta consulta incluye los gastos personales del responsable que coinciden con los filtros indicados. No hubo entrega de caja chica para estos movimientos.');
         }
         $sheet->getPageSetup()->setPrintArea('A1:L'.(58 + $extra))->setFitToWidth(1)->setFitToHeight(0)->setRowsToRepeatAtTopByStartAndEnd(20, 20);
         $sheet->setShowGridlines(false);

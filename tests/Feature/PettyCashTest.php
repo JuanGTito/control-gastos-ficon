@@ -89,7 +89,7 @@ class PettyCashTest extends TestCase
         $this->actingAs($this->person('admin'))->put('/configuracion/'.$category->id, ['kind' => 'category', 'name' => 'Materiales de oficina', 'active' => '0', 'sort_order' => 0, 'version' => 1])->assertRedirect();
         $this->assertSame($category->id, $expense->fresh()->category_id);
         $this->actingAs($owner)->get('/gastos?category=Materiales%20de%20oficina')->assertOk()->assertSee('Compra verificada');
-        $this->post('/gastos', ['spent_on' => now()->toDateString(), 'description' => 'Nuevo', 'amount' => '1', 'category' => 'Materiales de oficina'])->assertSessionHasErrors('category');
+        $this->post('/gastos', ['spent_on' => now(config('expenses.timezone'))->toDateString(), 'description' => 'Nuevo', 'amount' => '1', 'category' => 'Materiales de oficina'])->assertSessionHasErrors('category');
         $this->put('/gastos/'.$expense->id, ['spent_on' => $expense->spent_on->toDateString(), 'description' => 'Corregido', 'amount' => '40', 'category' => 'Materiales de oficina', 'version' => 1])->assertRedirect();
         $this->assertSame('Materiales', AuditEntry::where('subject_type', 'expense')->where('action', 'created')->first()->after['category']);
     }
@@ -104,7 +104,7 @@ class PettyCashTest extends TestCase
         $this->actingAs($this->person())->get('/caja-chica/'.$cash->id)->assertForbidden();
         $this->get('/caja-chica/'.$cash->id.'/exportar/xlsx')->assertForbidden();
         $this->get('/gastos?petty_cash_account_id='.$cash->id)->assertForbidden();
-        $this->post('/gastos', ['spent_on' => now()->toDateString(), 'description' => 'Ajeno', 'category' => 'Otros', 'amount' => '1', 'petty_cash_account_id' => $cash->id])->assertForbidden();
+        $this->post('/gastos', ['spent_on' => now(config('expenses.timezone'))->toDateString(), 'description' => 'Ajeno', 'category' => 'Otros', 'amount' => '1', 'petty_cash_account_id' => $cash->id])->assertForbidden();
     }
 
     public function test_cash_lifecycle_balances_money_receipts_and_records_review(): void
@@ -114,7 +114,7 @@ class PettyCashTest extends TestCase
         $admin = $this->person('admin');
         $cash = $this->cash($owner, $admin);
         $this->expense($owner, $cash, [], true);
-        $this->actingAs($owner)->post('/caja-chica/'.$cash->id.'/devoluciones', ['amount' => '60', 'returned_on' => now()->toDateString(), 'note' => 'Saldo devuelto'])->assertRedirect();
+        $this->actingAs($owner)->post('/caja-chica/'.$cash->id.'/devoluciones', ['amount' => '60', 'returned_on' => now(config('expenses.timezone'))->toDateString(), 'note' => 'Saldo devuelto'])->assertRedirect();
         $this->assertSame('0.00', $cash->fresh()->figures()['difference']);
         $this->assertSame('40.00', $cash->figures()['spent']);
         $this->assertSame('60.00', $cash->figures()['returned']);
@@ -144,8 +144,8 @@ class PettyCashTest extends TestCase
         $cash = $this->cash($owner);
         $expense = $this->expense($owner, $cash);
         $this->actingAs($owner)->post('/caja-chica/'.$cash->id.'/estado', ['status' => 'submitted', 'version' => $cash->fresh()->version]);
-        $this->put('/gastos/'.$expense->id, ['spent_on' => now()->toDateString(), 'description' => 'Cambio bloqueado', 'amount' => '20', 'category' => 'Materiales', 'version' => 1])->assertSessionHasErrors('petty_cash_account_id');
-        $this->post('/caja-chica/'.$cash->id.'/devoluciones', ['amount' => '1', 'returned_on' => now()->toDateString()])->assertSessionHasErrors('cash');
+        $this->put('/gastos/'.$expense->id, ['spent_on' => now(config('expenses.timezone'))->toDateString(), 'description' => 'Cambio bloqueado', 'amount' => '20', 'category' => 'Materiales', 'version' => 1])->assertSessionHasErrors('petty_cash_account_id');
+        $this->post('/caja-chica/'.$cash->id.'/devoluciones', ['amount' => '1', 'returned_on' => now(config('expenses.timezone'))->toDateString()])->assertSessionHasErrors('cash');
         $this->actingAs($this->person('admin'))->post('/caja-chica/'.$cash->id.'/estado', ['status' => 'observed', 'version' => $cash->fresh()->version])->assertSessionHasErrors('review_note');
         $this->post('/caja-chica/'.$cash->id.'/estado', ['status' => 'observed', 'version' => $cash->fresh()->version, 'review_note' => 'Adjuntar boleta'])->assertRedirect();
         $this->assertTrue($cash->fresh()->editable());
@@ -156,8 +156,8 @@ class PettyCashTest extends TestCase
         $owner = $this->person();
         $cash = $this->cash($owner);
         $this->expense($owner, $cash);
-        $this->actingAs($owner)->post('/caja-chica/'.$cash->id.'/devoluciones', ['amount' => '60.01', 'returned_on' => now()->toDateString()])->assertSessionHasErrors('amount');
-        $this->post('/caja-chica/'.$cash->id.'/devoluciones', ['amount' => '60', 'returned_on' => now()->toDateString()])->assertRedirect();
+        $this->actingAs($owner)->post('/caja-chica/'.$cash->id.'/devoluciones', ['amount' => '60.01', 'returned_on' => now(config('expenses.timezone'))->toDateString()])->assertSessionHasErrors('amount');
+        $this->post('/caja-chica/'.$cash->id.'/devoluciones', ['amount' => '60', 'returned_on' => now(config('expenses.timezone'))->toDateString()])->assertRedirect();
         $this->assertDatabaseCount('expenses', 1);
         $this->assertDatabaseCount('cash_returns', 1);
     }
@@ -171,7 +171,7 @@ class PettyCashTest extends TestCase
         $this->assertSame($owner->id, $expense->user_id);
         $this->assertSame($admin->id, AuditEntry::where('subject_type', 'expense')->first()->actor_id);
         $otherCash = $this->cash($this->person(), $admin);
-        $this->actingAs($admin)->put('/gastos/'.$expense->id, ['spent_on' => now()->toDateString(), 'description' => 'No reasignar', 'category' => 'Materiales', 'amount' => '1', 'version' => 1, 'petty_cash_account_id' => $otherCash->id])->assertSessionHasErrors('petty_cash_account_id');
+        $this->actingAs($admin)->put('/gastos/'.$expense->id, ['spent_on' => now(config('expenses.timezone'))->toDateString(), 'description' => 'No reasignar', 'category' => 'Materiales', 'amount' => '1', 'version' => 1, 'petty_cash_account_id' => $otherCash->id])->assertSessionHasErrors('petty_cash_account_id');
         $this->assertSame($cash->id, $expense->fresh()->petty_cash_account_id);
     }
 

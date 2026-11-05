@@ -122,7 +122,7 @@ class PermanentCashTest extends TestCase
         $admin = $this->person('admin');
         $tech = $this->person();
         $cash = $this->cash($tech, $admin);
-        $this->post('/caja-chica', ['user_id' => $tech->id, 'purpose' => 'Duplicada', 'received_on' => now()->toDateString(), 'received_amount' => '100'])->assertSessionHasErrors('user_id');
+        $this->post('/caja-chica', ['user_id' => $tech->id, 'purpose' => 'Duplicada', 'received_on' => now(config('expenses.timezone'))->toDateString(), 'received_amount' => '100'])->assertSessionHasErrors('user_id');
         $this->put('/caja-chica/'.$cash->id, ['purpose' => 'No alterar entregas', 'received_on' => $cash->received_on->toDateString(), 'received_amount' => '500', 'version' => $cash->version])->assertSessionHasErrors('received_amount');
         $this->assertDatabaseCount('petty_cash_accounts', 1);
         $this->assertDatabaseCount('cash_fundings', 1);
