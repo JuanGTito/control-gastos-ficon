@@ -2,13 +2,15 @@
 
 Esta guía prepara una **instalación nueva**, sin importar los registros locales. En Hostinger Web/Cloud, el motor de base es MariaDB y el directorio público habitual es `public_html`. El código Laravel, `.env`, los comprobantes y la plantilla Excel deben quedar fuera de `public_html`. La copia del repositorio no contiene contraseñas ni datos reales.
 
+Para mantener el sitio principal `ficon.pe`, crear `gastos.ficon.pe` como **sitio independiente** en hPanel: Websites → Create site → Custom PHP/HTML → Start empty → conectar el subdominio. Este sitio nuevo debe tener su propio directorio `/home/USUARIO/domains/gastos.ficon.pe/public_html`; verificar la ruta mostrada por hPanel antes de usar los comandos. Crear también su base MariaDB en hPanel y activar PHP 8.3 o superior. No copiar archivos de Gastos Ficon al `public_html` del sitio principal.
+
 ## 1. Preparar el alojamiento
 
 En hPanel, activar PHP **8.3 o superior**, SSH y una base MariaDB/MySQL para el dominio. Anotar el nombre de base, usuario y contraseña asignados por hPanel; suelen llevar un prefijo de la cuenta. Confirmar que el dominio ya tiene HTTPS. En SSH, comprobar PHP y Composer 2:
 
 ```sh
 php -v
-composer --version
+composer2 --version
 php -m
 ```
 
@@ -45,8 +47,8 @@ git clone URL_DEL_REPOSITORIO gastos-ficon
 cd gastos-ficon
 cp .env.production.example .env
 nano .env
-composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
-composer check-platform-reqs --no-dev
+composer2 install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+composer2 check-platform-reqs --no-dev
 php artisan key:generate
 mkdir -p storage/app/private/receipts storage/app/templates storage/framework/cache/data storage/framework/cache/locks storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 chmod -R ug+rwX storage bootstrap/cache
@@ -95,7 +97,7 @@ En actualizaciones, respaldar primero la base y `storage/app/private` más la pl
 
 ```sh
 git pull --ff-only
-composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+composer2 install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 php artisan migrate --force
 cp -a public/. ../public_html/
 cp deploy/hostinger/index.php ../public_html/index.php
@@ -107,6 +109,8 @@ La validación local actual usa MySQL 8. Ejecutar las migraciones primero en una
 ## Fuentes técnicas
 
 - [Hostinger: motor MariaDB en Web/Cloud](https://www.hostinger.com/support/1583226-which-database-management-system-is-used-at-hostinger/).
+- [Hostinger: subdominio como sitio independiente](https://www.hostinger.com/support/1583405-how-to-create-and-delete-subdomains-in-hostinger/).
+- [Hostinger: Composer 2 por SSH](https://www.hostinger.com/support/5792078-how-to-use-composer-at-hostinger/).
 - [Hostinger: directorio público y sus límites](https://www.hostinger.com/support/1583494-what-is-the-path-to-your-website-s-root-home-directory-and-how-to-change-it-in-hostinger/).
 - [Hostinger: PHP disponible](https://www.hostinger.com/support/1575755-how-to-change-the-php-version-of-your-hostinger-hosting-plan/).
 - [Laravel 13: recomendaciones de despliegue](https://laravel.com/framework/docs/deployment).
