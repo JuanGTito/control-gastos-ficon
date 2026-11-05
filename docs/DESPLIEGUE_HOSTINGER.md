@@ -1,10 +1,23 @@
 # Despliegue de Gastos Ficon en Hostinger
 
-Esta guía prepara una **instalación nueva**, sin importar los registros locales. En Hostinger Web/Cloud, el motor de base es MariaDB y el directorio público habitual es `public_html`. El código Laravel, `.env`, los comprobantes y la plantilla Excel deben quedar fuera de `public_html`. La copia del repositorio no contiene contraseñas ni datos reales.
+Esta guía prepara una **instalación nueva**, sin importar los registros locales. El código Laravel, `.env`, los comprobantes y la plantilla Excel quedan fuera de la carpeta pública. La copia del repositorio no contiene contraseñas ni datos reales.
 
-Para mantener el sitio principal `ficon.pe`, crear `gastos.ficon.pe` como **sitio independiente** en hPanel: Websites → Create site → Custom PHP/HTML → Start empty → conectar el subdominio. Este sitio nuevo debe tener su propio directorio `/home/USUARIO/domains/gastos.ficon.pe/public_html`; verificar la ruta mostrada por hPanel antes de usar los comandos. Crear también su base MariaDB en hPanel y activar PHP 8.3 o superior. No copiar archivos de Gastos Ficon al `public_html` del sitio principal.
+## Estructura real de ficon.pe
 
-## 1. Preparar el alojamiento
+En este alojamiento, hPanel ya creó `gastos.ficon.pe` con raíz `/home/u571915572/domains/ficon.pe/public_html/gastos`. `public_html` es un enlace simbólico a `ficon-app/public`, de modo que la raíz física del subdominio es `ficon-app/public/gastos`. El sitio principal `ficon.pe` sigue usando `ficon-app`.
+
+```text
+/home/u571915572/domains/ficon.pe/
+├── ficon-app/                       # sitio principal; no modificar
+│   └── public/
+│       └── gastos/                  # archivos públicos del subdominio
+├── gastos-ficon/                    # repositorio Laravel, .env, vendor, storage
+└── public_html -> ficon-app/public
+```
+
+No cambiar `public_html` ni copiar archivos a su raíz. Todo archivo web de Gastos Ficon va únicamente a `public_html/gastos`. El adaptador específico es `deploy/hostinger/index-subdominio-ficon.php`; el adaptador `deploy/hostinger/index.php` corresponde a un sitio independiente cuya raíz `public_html` es hermana de `gastos-ficon`.
+
+## 1. Comprobar rutas y requisitos
 
 En hPanel, activar PHP **8.3 o superior**, SSH y una base MariaDB/MySQL para el dominio. Anotar el nombre de base, usuario y contraseña asignados por hPanel; suelen llevar un prefijo de la cuenta. Confirmar que el dominio ya tiene HTTPS. En SSH, comprobar PHP y Composer 2:
 
@@ -16,70 +29,79 @@ php -m
 
 PHP debe tener las extensiones exigidas por `composer.lock`, en particular `pdo_mysql`, `mbstring`, `gd`, `zip` y `fileinfo`. Este proyecto usa CSS y JavaScript ya incluidos en `public/`; no necesita ejecutar npm en el servidor.
 
-## 2. Estructura segura de carpetas
-
-Ejemplo para `/home/USUARIO/domains/DOMINIO`:
-
-```text
-DOMINIO/
-├── gastos-ficon/             # repositorio, .env, vendor/, storage/
-└── public_html/              # solo archivos de public/ e index.php adaptado
-```
-
-Crear o clonar el repositorio en `gastos-ficon`, como carpeta **hermana** de `public_html`. El archivo `deploy/hostinger/index.php` asume exactamente ese nombre. Si se elige otro, cambiar su ruta `../gastos-ficon` antes de copiarlo. No ubicar el repositorio completo dentro de `public_html`.
-
-Si todavía no hay un remoto Git, subir el ZIP de código `gastos-ficon-hostinger.zip` por SFTP al directorio del dominio y sustituir `git clone` del paso siguiente por:
+Desde SSH:
 
 ```sh
-mkdir gastos-ficon
-unzip gastos-ficon-hostinger.zip -d gastos-ficon
+cd /home/u571915572/domains/ficon.pe
+readlink -f public_html
+readlink -f public_html/gastos
+ls -la gastos-ficon
+ls -la public_html/gastos
 ```
 
-El ZIP contiene solo archivos versionados; la plantilla, los comprobantes y las credenciales se transfieren por separado.
+Confirmar que `public_html/gastos` resuelve a `ficon-app/public/gastos`. Revisar los archivos existentes antes de instalar. Crear una base MariaDB/MySQL nueva para Gastos Ficon desde hPanel; no reutilizar la base del sitio principal.
 
-## 3. Instalar y configurar por SSH
+## 2. Obtener el código y configurar Laravel
 
-Sustituir `DOMINIO` y `URL_DEL_REPOSITORIO`; ejecutar estos comandos desde SSH del alojamiento:
+La carpeta `gastos-ficon` ya aparece en hPanel. Si contiene el repositorio Git correcto y no tiene cambios locales, actualizarlo:
 
 ```sh
-cd /home/USUARIO/domains/DOMINIO
-git clone URL_DEL_REPOSITORIO gastos-ficon
+cd /home/u571915572/domains/ficon.pe
+git -C gastos-ficon remote -v
+git -C gastos-ficon status --short
+git -C gastos-ficon branch --show-current
+git -C gastos-ficon pull --ff-only origin main
+```
+
+El remoto debe ser `https://github.com/JuanGTito/control-gastos-ficon.git`, la rama `main` y el estado limpio. Si la carpeta está vacía, en vez del bloque anterior:
+
+```sh
+cd /home/u571915572/domains/ficon.pe
+git clone https://github.com/JuanGTito/control-gastos-ficon.git gastos-ficon
+```
+
+Si contiene otros archivos, no clonar ni sobrescribir; revisar primero su contenido. Para la primera instalación:
+
+```sh
 cd gastos-ficon
-cp .env.production.example .env
+test -f .env || cp .env.production.example .env
 nano .env
 composer2 install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 composer2 check-platform-reqs --no-dev
-php artisan key:generate
+grep -q '^APP_KEY=$' .env && php artisan key:generate
 mkdir -p storage/app/private/receipts storage/app/templates storage/framework/cache/data storage/framework/cache/locks storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 chmod -R ug+rwX storage bootstrap/cache
 php artisan migrate --force
 ```
 
-En `.env`, cambiar obligatoriamente `APP_URL`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` y `MAIL_FROM_ADDRESS`. Usar los datos reales de hPanel; normalmente `DB_HOST=localhost`, `DB_PORT=3306` y `DB_CONNECTION=mariadb`. Mantener `APP_ENV=production`, `APP_DEBUG=false` y `SESSION_SECURE_COOKIE=true`. Crear `APP_KEY` **una sola vez**; conservarla en actualizaciones posteriores.
+En `.env`, usar `APP_URL=https://gastos.ficon.pe` y cambiar `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` y `MAIL_FROM_ADDRESS`. Usar los datos reales de hPanel; normalmente `DB_HOST=localhost`, `DB_PORT=3306` y `DB_CONNECTION=mariadb`. Mantener `APP_ENV=production`, `APP_DEBUG=false` y `SESSION_SECURE_COOKIE=true`. Crear `APP_KEY` **una sola vez**; conservarla en actualizaciones posteriores.
 
-## 4. Instalar la plantilla privada y publicar archivos web
+## 3. Instalar la plantilla privada y publicar archivos web
 
 Transferir por SFTP la plantilla Excel original a:
 
 ```text
-gastos-ficon/storage/app/templates/caja-chica.xlsx
+/home/u571915572/domains/ficon.pe/gastos-ficon/storage/app/templates/caja-chica.xlsx
 ```
 
 La plantilla no forma parte de Git; el exportador XLSX la necesita. Los comprobantes se guardan en `storage/app/private/receipts` y tampoco se copian a `public_html`.
 
-Con `public_html` reservado para esta aplicación y después de respaldar cualquier sitio anterior:
+Respaldar primero el contenido actual de la carpeta del subdominio. Luego copiar solo `public/` y reemplazar su `index.php` con el adaptador específico. No usar `../public_html/` como destino porque eso afectaría al sitio principal:
 
 ```sh
-cd /home/USUARIO/domains/DOMINIO/gastos-ficon
-cp -a public/. ../public_html/
-cp deploy/hostinger/index.php ../public_html/index.php
+cd /home/u571915572/domains/ficon.pe
+cp -a public_html/gastos "gastos-public-backup-$(date +%Y%m%d-%H%M%S)"
+cp -a gastos-ficon/public/. public_html/gastos/
+cp gastos-ficon/deploy/hostinger/index-subdominio-ficon.php public_html/gastos/index.php
+if [ -f public_html/gastos/index.html ]; then mv public_html/gastos/index.html public_html/gastos/index.html.hostinger-backup; fi
+cd gastos-ficon
 test -f storage/app/templates/caja-chica.xlsx
 php artisan optimize
 ```
 
-El segundo `cp` reemplaza el `index.php` normal de Laravel por el adaptador que carga el proyecto desde la carpeta hermana. Deben quedar `public_html/.htaccess`, CSS, JS, imagen FICON y el adaptador. Retirar la página predeterminada del dominio si existe un `index.html` que tome prioridad.
+La carpeta `public_html/gastos` debe contener `.htaccess`, CSS, JS, imágenes y el adaptador. `.env`, `vendor/` y `storage/` permanecen dentro de `gastos-ficon`. No copiar ni mover el enlace `public_html`.
 
-## 5. Crear el superadministrador
+## 4. Crear el superadministrador
 
 En la carpeta `gastos-ficon`, después de `migrate`:
 
@@ -89,9 +111,9 @@ php artisan app:create-super-admin --username=superadmin --email=TU_CORREO@DOMIN
 
 Artisan pedirá la contraseña de forma oculta: mínimo 12 caracteres con letras y números. No colocar la contraseña en el comando. La opción `--generate-local-password` está deshabilitada en producción.
 
-## 6. Comprobar y actualizar
+## 5. Comprobar y actualizar
 
-Comprobar `php artisan migrate:status`, `https://DOMINIO/up`, el acceso, un gasto con comprobante y las exportaciones XLSX/PDF. Si falla Excel, comprobar la ubicación y permisos de `caja-chica.xlsx`. Si falla una ruta, revisar `public_html/.htaccess` y la ruta de `deploy/hostinger/index.php`.
+Comprobar `php artisan migrate:status`, `https://gastos.ficon.pe/up`, el acceso, un gasto con comprobante y las exportaciones XLSX/PDF. Si falla Excel, comprobar la ubicación y permisos de `caja-chica.xlsx`. Si falla una ruta, revisar `public_html/gastos/.htaccess` y el adaptador del subdominio.
 
 En actualizaciones, respaldar primero la base y `storage/app/private` más la plantilla. Mantener el mismo `.env` y `APP_KEY`. Desde el proyecto:
 
@@ -99,8 +121,8 @@ En actualizaciones, respaldar primero la base y `storage/app/private` más la pl
 git pull --ff-only
 composer2 install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 php artisan migrate --force
-cp -a public/. ../public_html/
-cp deploy/hostinger/index.php ../public_html/index.php
+cp -a public/. ../public_html/gastos/
+cp deploy/hostinger/index-subdominio-ficon.php ../public_html/gastos/index.php
 php artisan optimize
 ```
 
